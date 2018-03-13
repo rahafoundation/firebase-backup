@@ -15,3 +15,13 @@ npm install
 ```
 npm run backup
 ```
+
+## Restore a backup to the test Firestore DB.
+
+This currently breaks because of Firestore Rules. You can manually and temporarily
+adjust the rules to allow these objects to be created or... we could figure out a
+better permissions solution.
+
+```
+npm run restoreTest
+```
