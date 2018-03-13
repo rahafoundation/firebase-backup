@@ -2,7 +2,7 @@ import * as firebase from 'firebase';
 import 'firebase/firestore';
 import fs from 'fs';
 
-firebase.initializeApp(require('./firebase.config.json'));
+firebase.initializeApp(require('./firebase.prod.config.json'));
 const auth = firebase.auth();
 const db = firebase.firestore();
 
@@ -18,7 +18,10 @@ let queriesCompleted = 0;
 Object.entries(queries).forEach((nmQry) => {
     let [name, query] = nmQry;
     query.get().then(function(snap) {
-        let data = snap.docs.map(x => JSON.stringify(x.data()) );
+        let data = snap.docs.map(x => JSON.stringify({
+            id: x.id,
+            data: x.data(),
+        }));
         fs.writeFile('./backup.' + name + '.json', data.join('\n'), (err) => {
             if (err) console.error(err);
             else console.log(data.length + ' records written for ' + name + '.')

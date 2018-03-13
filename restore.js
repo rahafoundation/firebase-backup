@@ -16,16 +16,11 @@ function restoreDatabase() {
         'user_data': db.collection('user_data')
     };
 
-    const queryKeys = {
-        user_data: 'user_name',
-    };
-
     let queriesCompleted = 0;
     const queriesToComplete = Object.keys(queries).length;
 
     Object.entries(queries).forEach((nmQry) => {
         let [name, query] = nmQry;
-        const queryKey = queryKeys[name];
         const backupFilename = `./backup.${name}.json`;
 
         new Promise((resolve) => {
@@ -38,13 +33,8 @@ function restoreDatabase() {
             const totalToCreate = fileJson.length;
             let created = 0;
             fileJson.forEach((object) => {
-                let doc;
-                if (queryKey === undefined) {
-                    doc = query.doc();
-                } else {
-                    doc = query.doc(queryKey);
-                }
-                doc.set(object).then(() => {
+                const { id, data } = object;
+                query.doc(id).set(data).then(() => {
                     if (++created == totalToCreate) {
                         console.log(`Restored ${totalToCreate} objects to the ${name} collection.`);
                         if (++queriesCompleted == queriesToComplete) {
