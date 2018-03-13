@@ -3331,6 +3331,6 @@
     "babel-preset-stage-2": "^6.24.1"
   },
   "scripts": {
-    "start": "babel-node index.js --presets es2015,stage-2"
+    "backup": "babel-node backup.js --presets es2015,stage-2"
   }
 }

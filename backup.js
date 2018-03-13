@@ -13,6 +13,8 @@ const queries = {
     'user_data': db.collection('user_data')
 };
 
+let queriesCompleted = 0;
+
 Object.entries(queries).forEach((nmQry) => {
     let [name, query] = nmQry;
     query.get().then(function(snap) {
@@ -20,6 +22,11 @@ Object.entries(queries).forEach((nmQry) => {
         fs.writeFile('./backup.' + name + '.json', data.join('\n'), (err) => {
             if (err) console.error(err);
             else console.log(data.length + ' records written for ' + name + '.')
+
+            // Teminate after having completed all queries.
+            if (++queriesCompleted >= Object.keys(queries).length) {
+                process.exit();
+            }
         });
     });
 });

@@ -10,8 +10,8 @@ Tested on node v.9.6.1+, npm 5.6.0+, but probably works for earlier versions. Us
 npm install
 ```
 
-## Run
+## Create a backup of the prod Firestore DB.
 
 ```
-npm start
+npm run backup
 ```
