@@ -1,0 +1,84 @@
+import readline from 'readline';
+
+import * as firebase from 'firebase';
+import 'firebase/firestore';
+import fs from 'fs';
+
+function restoreDatabase() {
+    firebase.initializeApp(require('./firebase.test.config.json'));
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    const queries = {
+        'operations': db.collection('operations'),
+        'members': db.collection('members'),
+        'relations': db.collection('relations'),
+        'user_data': db.collection('user_data')
+    };
+
+    const queryKeys = {
+        user_data: 'user_name',
+    };
+
+    let queriesCompleted = 0;
+    const queriesToComplete = Object.keys(queries).length;
+
+    Object.entries(queries).forEach((nmQry) => {
+        let [name, query] = nmQry;
+        const queryKey = queryKeys[name];
+        const backupFilename = `./backup.${name}.json`;
+
+        new Promise((resolve) => {
+            fs.readFile(backupFilename, 'utf8', function(err, data) {
+                if (err) throw err;
+                const objects = [];
+                resolve(data.split('\n').map((object) => JSON.parse(object)));
+            });
+        }).then((fileJson) => {
+            const totalToCreate = fileJson.length;
+            let created = 0;
+            fileJson.forEach((object) => {
+                let doc;
+                if (queryKey === undefined) {
+                    doc = query.doc();
+                } else {
+                    doc = query.doc(queryKey);
+                }
+                doc.set(object).then(() => {
+                    if (++created == totalToCreate) {
+                        console.log(`Restored ${totalToCreate} objects to the ${name} collection.`);
+                        if (++queriesCompleted == queriesToComplete) {
+                            process.exit();
+                        }
+                    }
+                });
+            })
+        });
+    });
+}
+
+let rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
+
+/**
+ * Exit if the input is not 'y'.
+ */
+function confirm(answer) {
+    if (answer === 'y') return true;
+    process.exit();
+};
+
+function prompt(question) {
+    return new Promise((resolve) => {
+        rl.question(question, (answer) => {
+            resolve(confirm(answer));
+        })
+    });
+}
+
+rl.write('This will destroy all data in the test database and restore it from your local backup of the prod db.\n');
+prompt('Do you have a local backup of the prod db? (If not, run `npm run backup`) (y/n) ')
+    .then(() => prompt('Are you sure you want to delete and restore the test database? (y/n) '))
+    .then(() => restoreDatabase());
