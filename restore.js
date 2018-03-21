@@ -50,8 +50,6 @@ let rl = readline.createInterface({
     output: process.stdout
 });
 
-
-
 /**
  * Exit if the input is not 'y'.
  */
