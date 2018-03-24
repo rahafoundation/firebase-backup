@@ -13,7 +13,7 @@ npm install
 ## Create a backup of the prod Firestore DB.
 
 ```
-npm run backup
+npm run backup-prod
 ```
 
 ## Restore a backup to the test Firestore DB.
@@ -23,5 +23,5 @@ adjust the rules to allow these objects to be created (and delete the existing o
 or... we could figure out a better permissions solution.
 
 ```
-npm run restoreTest
+npm run restore-test
 ```

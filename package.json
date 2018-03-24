@@ -3331,7 +3331,8 @@
     "babel-preset-stage-2": "^6.24.1"
   },
   "scripts": {
-    "backup": "babel-node backup.js --presets es2015,stage-2",
-    "restoreTest": "babel-node restore.js --presets es2015,stage-2"
+    "backup-prod": "babel-node backup.js --presets es2015,stage-2",
+    "edit-test-uid": "babel-node edit-test-uid.js --presets es2015,stage-2",
+    "restore-test": "babel-node restore.js --presets es2015,stage-2"
   }
 }
