@@ -1,3 +1,16 @@
+/**
+ * Use this script to change the uid associated with a given member id.
+ *
+ * For example, could do:
+ * npm run edit-test-uid mark.ulrich 2777 vJle6l4K3jdEBk5CvZK4RYyxpFI2
+ *
+ * to make all member and operations documents associated with mark.ulrich$2777 to have
+ * uid vJle6l4K3jdEBk5CvZK4RYyxpFI2. This is useful because the firebase auth UIDs are
+ * different in prod and test, so after logging in on test you can see your uid in
+ * the firebase authentication tab and then run this script to associate that test uid
+ * with a given member id, so then you can log in as that member and view all
+ * public data for debugging and development purposes.
+ */
 import * as firebase from 'firebase';
 import 'firebase/firestore';
 
@@ -10,7 +23,7 @@ async function main() {
 
     const memberId = args[4] + '$' + args[5];
     const newUid = args[6];
-    const config = require('./firebase.test.config.json');
+    const config = require('./firebase.prod.config.json');
 
     const changeMsg = `member ID ${memberId} to uid ${newUid} in ${config.projectId}`;
 
