@@ -1,6 +1,9 @@
+import bluebird from 'bluebird';
 import firebase from 'firebase';
 import 'firebase/firestore';
 import fs from 'fs';
+
+const writeFile = bluebird.promisify(fs.writeFile);
 
 firebase.initializeApp(require('./firebase.prod.config.json'));
 const auth = firebase.auth();
@@ -27,7 +30,7 @@ async function storeQueryResult(nameAndQuery) {
         let last = snap.docs[snap.docs.length - 1];
         query = query.startAfter(last);
     }
-    await fs.writeFile('./backup.' + name + '.json', backup.join('\n'));
+    await writeFile('./backup.' + name + '.json', backup.join('\n'));
     console.log(`${backup.length} records written for ${name}.`);
 }
 
