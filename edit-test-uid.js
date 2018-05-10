@@ -23,7 +23,7 @@ async function main() {
 
     const memberId = args[4] + '$' + args[5];
     const newUid = args[6];
-    const config = require('./firebase.prod.config.json');
+    const config = require('./firebase.test.config.json');
 
     const changeMsg = `member ID ${memberId} to uid ${newUid} in ${config.projectId}`;
 
