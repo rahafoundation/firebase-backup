@@ -11,7 +11,7 @@ authentication work while developing.
 ```sh
 yarn install  # install
 yarn backup-prod  # back up prod db locally
-yarn restore-prod # restore prod db from local backup
+yarn restore-test # restore test db from local backup
 yarn edit-test-uid memberPrefix memberPublicPin NEW_UID  # change uid for member account in test db, see more below.
 ```
 
