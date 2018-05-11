@@ -10,6 +10,30 @@ const readFileAsync = util.promisify(fs.readFile);
  * =======
  */
 
+async function deleteAllDocsInCollection(
+  collection: firebase.firestore.CollectionReference
+): Promise<number> {
+  let curCollectionView: firebase.firestore.Query = collection;
+  let numDeleted = 0;
+  while (true) {
+    const snapshot = await curCollectionView.get();
+    const fetchSize = snapshot.docs.length;
+    if (fetchSize === 0) break;
+
+    const last = snapshot.docs[snapshot.docs.length - 1];
+
+    const batch = collection.firestore.batch();
+    snapshot.docs.forEach(doc => {
+      batch.delete(doc.ref);
+    });
+
+    await batch.commit();
+    numDeleted += fetchSize;
+    curCollectionView = collection.startAfter(last);
+  }
+  return numDeleted;
+}
+
 async function restoreDatabase(): Promise<void> {
   firebase.initializeApp(require("./firebase.test.config.json"));
   const auth = firebase.auth();
@@ -34,8 +58,13 @@ async function restoreDatabase(): Promise<void> {
 
         const numEntriesToRestore = backupData.length;
 
-        console.log(`Restoring collection ${collectionName}`);
+        console.log(`Deleting docs from collection ${collectionName}`);
+        const numDeleted = await deleteAllDocsInCollection(collection);
+        console.log(
+          `Deleted ${numDeleted} docs from collection ${collectionName}`
+        );
 
+        console.log(`Restoring collection ${collectionName}`);
         await Promise.all(
           backupData.map(entryToRestore => {
             const { id, data } = entryToRestore;
@@ -44,7 +73,7 @@ async function restoreDatabase(): Promise<void> {
         );
 
         console.info(
-          `Restored ${numEntriesToRestore} entires into collection ${collectionName}`
+          `Restored ${numEntriesToRestore} entries into collection ${collectionName}`
         );
       }
     )
