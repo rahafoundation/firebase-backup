@@ -10,6 +10,10 @@ const readFileAsync = util.promisify(fs.readFile);
  * =======
  */
 
+function deserialize(serialized: string) {
+  return eval(`(${serialized})`);
+}
+
 async function deleteAllDocsInCollection(
   collection: firebase.firestore.CollectionReference
 ): Promise<number> {
@@ -50,11 +54,11 @@ async function restoreDatabase(): Promise<void> {
   await Promise.all(
     Object.entries(collectionsToRestore).map(
       async ([collectionName, collection]) => {
-        const backupFilename = `./backup.${collectionName}.json`;
+        const backupFilename = `./backup.${collectionName}.serializedJs`;
         const backupText = await readFileAsync(backupFilename, "utf8");
         const backupData = backupText
           .split("\n")
-          .map(object => JSON.parse(object));
+          .map(object => deserialize(object));
 
         const numEntriesToRestore = backupData.length;
 

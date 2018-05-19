@@ -1,6 +1,7 @@
 import * as firebase from "firebase";
 import * as util from "util";
 import * as fs from "fs";
+import * as serialize from "serialize-javascript";
 
 const writeFile = util.promisify(fs.writeFile);
 
@@ -15,6 +16,7 @@ async function storeQueryResult(
 ): Promise<void> {
   let backup: any[] = [];
   let curCollectionView: firebase.firestore.Query = collection;
+  let docs = [];
   while (true) {
     const snapshot = await curCollectionView.get();
     const fetchSize = snapshot.docs.length;
@@ -22,7 +24,7 @@ async function storeQueryResult(
 
     console.log(`Fetched ${fetchSize} from ${name}`);
     const data = snapshot.docs.map(x =>
-      JSON.stringify({
+      serialize({
         id: x.id,
         data: x.data()
       })
@@ -31,7 +33,7 @@ async function storeQueryResult(
     const last = snapshot.docs[snapshot.docs.length - 1];
     curCollectionView = collection.startAfter(last);
   }
-  await writeFile("./backup." + name + ".json", backup.join("\n"));
+  await writeFile("./backup." + name + ".serializedJs", backup.join("\n"));
   console.log(`${backup.length} records written for ${name}.`);
 }
 
