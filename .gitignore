@@ -1,5 +1,6 @@
 node_modules/
 .history/
 backup*json
+backup*serializedJs
 *.log
 
