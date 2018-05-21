@@ -46,7 +46,7 @@ async function restoreDatabase(pathToFbKey: string): Promise<void> {
       }`
     );
   }
-  // TODO similar logic in migrate-member-usernames ideally should be more DRY
+  // TODO similar logic in migrations/member-usernames ideally should be more DRY
   const app = admin.initializeApp({
     credential: admin.credential.cert(firebaseKey),
     databaseURL: `https://${projectId}.firebaseio.com`
