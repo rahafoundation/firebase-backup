@@ -48,7 +48,6 @@ async function restoreDatabase(pathToFbKey: string): Promise<void> {
   });
   const auth = app.auth();
   const db = app.firestore();
-  db.collection
 
   const collectionsToRestore = {
     operations: db.collection("operations"),
