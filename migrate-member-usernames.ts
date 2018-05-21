@@ -49,8 +49,7 @@ async function migrateMemberUsernamesDollarToDot(pathToFbKey: string, projectId:
           console.error(`Unexpected document: ${JSON.stringify(d.data(), null, 2)}`);
         }
       } else if (memberUidToMid.get(creatorUid) !== creatorMid || memberUidToMid.get(toUid) !== toMid) {
-        if (toMid !== 'sharon.c$2893')
-          console.error(`The op ${d.id} has inconsistent mid and uid mappings, expect ${memberUidToMid.get(creatorUid)} == ${creatorMid} and ${memberUidToMid.get(toUid)} == ${toMid}`);
+        console.error(`The op ${d.id} has inconsistent mid and uid mappings, expect ${memberUidToMid.get(creatorUid)} == ${creatorMid} and ${memberUidToMid.get(toUid)} == ${toMid}`);
       }
       const updates: any = {
         creator_mid: admin.firestore.FieldValue.delete(),
