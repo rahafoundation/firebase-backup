@@ -4,6 +4,7 @@ import * as readline from "readline";
 import * as fs from "fs";
 import * as util from "util";
 import { SSL_OP_NETSCAPE_DEMO_CIPHER_CHANGE_BUG } from "constants";
+import { Query, CollectionReference } from "@google-cloud/firestore";
 
 const readFileAsync = util.promisify(fs.readFile);
 
@@ -12,9 +13,9 @@ function deserialize(serialized: string) {
 }
 
 async function deleteAllDocsInCollection(
-  collection: any // TODO should be admin.firestore.CollectionReference
+  collection: CollectionReference
 ): Promise<number> {
-  let curCollectionView = collection;
+  let curCollectionView: Query = collection;
   let numDeleted = 0;
   while (true) {
     const snapshot = await curCollectionView.get();
@@ -37,9 +38,13 @@ async function deleteAllDocsInCollection(
 
 async function restoreDatabase(pathToFbKey: string): Promise<void> {
   const firebaseKey = require(pathToFbKey);
-  const projectId = 'raha-test';
+  const projectId = "raha-test";
   if (firebaseKey.project_id !== projectId) {
-    throw Error(`Must use project ${projectId} but path to firebase key credentials was for ${firebaseKey.project_id}`);
+    throw Error(
+      `Must use project ${projectId} but path to firebase key credentials was for ${
+        firebaseKey.project_id
+      }`
+    );
   }
   // TODO similar logic in migrate-member-usernames ideally should be more DRY
   const app = admin.initializeApp({
@@ -123,7 +128,7 @@ async function main() {
 
   if (args.length !== 3) {
     console.error(
-      'Usage is yarn run restore-test path-to-fb-key. You provided:',
+      "Usage is yarn run restore-test path-to-fb-key. You provided:",
       args
     );
     process.exit(2);
