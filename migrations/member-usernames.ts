@@ -70,7 +70,7 @@ async function main() {
   
   if (args.length !== 4) {
     console.error(
-      'Usage is npx ts-node migrate-member-usernames.ts path-to-fb-key fb-url. You provided:',
+      'Usage is npx ts-node member-usernames.ts path-to-fb-key fb-url. You provided:',
       args
     );
     process.exit(2);
