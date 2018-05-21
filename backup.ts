@@ -54,6 +54,7 @@ const prodConfig = require("./firebase.prod.config.json");
 firebase.initializeApp(prodConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
+db.settings({timestampsInSnapshots: true});
 
 const collectionsToBackup = {
   operations: db.collection("operations"),

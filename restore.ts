@@ -1,23 +1,20 @@
-import * as readline from "readline";
+import * as admin from "firebase-admin";
 import * as firebase from "firebase";
+import * as readline from "readline";
 import * as fs from "fs";
 import * as util from "util";
+import { SSL_OP_NETSCAPE_DEMO_CIPHER_CHANGE_BUG } from "constants";
 
 const readFileAsync = util.promisify(fs.readFile);
-
-/* =======
- * Helpers
- * =======
- */
 
 function deserialize(serialized: string) {
   return eval(`(${serialized})`);
 }
 
 async function deleteAllDocsInCollection(
-  collection: firebase.firestore.CollectionReference
+  collection: any // TODO should be admin.firestore.CollectionReference
 ): Promise<number> {
-  let curCollectionView: firebase.firestore.Query = collection;
+  let curCollectionView = collection;
   let numDeleted = 0;
   while (true) {
     const snapshot = await curCollectionView.get();
@@ -38,10 +35,20 @@ async function deleteAllDocsInCollection(
   return numDeleted;
 }
 
-async function restoreDatabase(): Promise<void> {
-  firebase.initializeApp(require("./firebase.test.config.json"));
-  const auth = firebase.auth();
-  const db = firebase.firestore();
+async function restoreDatabase(pathToFbKey: string): Promise<void> {
+  const firebaseKey = require(pathToFbKey);
+  const projectId = 'raha-test';
+  if (firebaseKey.project_id !== projectId) {
+    throw Error(`Must use project ${projectId} but path to firebase key credentials was for ${firebaseKey.project_id}`);
+  }
+  // TODO similar logic in migrate-member-usernames ideally should be more DRY
+  const app = admin.initializeApp({
+    credential: admin.credential.cert(firebaseKey),
+    databaseURL: `https://${projectId}.firebaseio.com`
+  });
+  const auth = app.auth();
+  const db = app.firestore();
+  db.collection
 
   const collectionsToRestore = {
     operations: db.collection("operations"),
@@ -84,12 +91,7 @@ async function restoreDatabase(): Promise<void> {
   );
 }
 
-/* ==================
- * User input helpers
- * ==================
- */
-
-let rl = readline.createInterface({
+const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout
 });
@@ -117,25 +119,31 @@ async function promptRestoreDatabase(): Promise<boolean> {
   );
 }
 
-/* ======
- * Script
- * ======
- */
+async function main() {
+  const args = process.argv;
 
-promptRestoreDatabase()
-  .then(confirmed => {
-    if (!confirmed) {
-      console.error("User did not accept; aborting.");
-      process.exit(2);
-    }
+  if (args.length !== 3) {
+    console.error(
+      'Usage is yarn run restore-test path-to-fb-key. You provided:',
+      args
+    );
+    process.exit(2);
+  }
 
-    return restoreDatabase();
-  })
-  .then(() => {
-    console.log("Restored database.");
+  const confirmed = await promptRestoreDatabase();
+  if (!confirmed) {
+    console.error("User did not accept; aborting.");
+    process.exit(2);
+  }
+
+  try {
+    await restoreDatabase(args[2]);
+    console.info("Restored database.");
     process.exit(0);
-  })
-  .catch(err => {
-    console.error("Failed to restore database.", err);
+  } catch (err) {
+    console.error("Migrating member usernames failed.", err);
     process.exit(1);
-  });
+  }
+}
+
+main();

@@ -6,7 +6,7 @@
     "sourceMap": true,
     "moduleResolution": "node",
     "strict": true,
-    "noImplicitAny": true,
+    "noImplicitAny": false,
     "noImplicitReturns": true
   },
   "exclude": ["node_modules", "jest"]
