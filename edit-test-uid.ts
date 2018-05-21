@@ -5,9 +5,9 @@
  * application, after the database has been restored.
  *
  * For example, could do:
- * npm run edit-test-uid mark.ulrich 2777 vJle6l4K3jdEBk5CvZK4RYyxpFI2
+ * npm run edit-test-uid mark.ulrich.2777 vJle6l4K3jdEBk5CvZK4RYyxpFI2
  *
- * to make all member and operations documents associated with mark.ulrich$2777 to have
+ * to make all member and operations documents associated with mark.ulrich.2777 to have
  * uid vJle6l4K3jdEBk5CvZK4RYyxpFI2. This is useful because the firebase auth UIDs are
  * different in prod and test, so after logging in on test you can see your uid in
  * the firebase authentication tab and then run this script to associate that test uid
@@ -74,15 +74,15 @@ const args = process.argv;
 
 if (args.length !== 5) {
   console.error(
-    'Usage is "yarn edit-test-uid memberUsername memberPublicPin newUid, e.g. mark.ulrich 2777 vJle6l4K3jdEBk5CvZK4RYyxpFI2". You provided:',
+    'Usage is "yarn edit-test-uid memberUsername memberPublicPin newUid, e.g. mark.ulrich.2777 vJle6l4K3jdEBk5CvZK4RYyxpFI2". You provided:',
     args
   );
   process.exit(2);
 }
 
 const config = require("./firebase.test.config.json");
-const memberId = args[2] + "$" + args[3];
-const newUid = args[4];
+const memberId = args[2];
+const newUid = args[3];
 
 const changeMsg = `member ID ${memberId} to uid ${newUid} in ${
   config.projectId

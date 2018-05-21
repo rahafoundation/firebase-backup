@@ -1,7 +1,6 @@
 /**
  * This is an example script for how to migrate firestore data, in this case
- * how we did the migration from member usernames with  memberPrefix `$` memberPublicPin
- * to memberPrefix . memberPublicPin.
+ * how we did the migration from member usernames with $ to using .
  */
 import * as admin from "firebase-admin";
 
