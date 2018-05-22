@@ -2,13 +2,17 @@
  * This is an example script for how to migrate firestore data, in this case
  * how we did the migration from member usernames with $ to using .
  */
+
+import * as path from "path";
 import * as admin from "firebase-admin";
 
 async function migrateMemberUsernamesDollarToDot(
   pathToFbKey: string,
   projectId: string
 ): Promise<void> {
-  const firebaseKey = require(pathToFbKey);
+  const firebaseKey = require(path.resolve(
+    path.join(process.cwd(), pathToFbKey)
+  ));
   if (firebaseKey.project_id !== projectId) {
     throw Error(
       `Gave projectId ${projectId} but path to firebase key credentials was for ${
