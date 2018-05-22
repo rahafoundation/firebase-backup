@@ -1,13 +1,15 @@
 {
   "compilerOptions": {
     "module": "commonjs",
-    "target": "es5",
+    "target": "es2015",
     "lib": ["es2018"],
     "sourceMap": true,
     "moduleResolution": "node",
     "strict": true,
     "noImplicitAny": true,
-    "noImplicitReturns": true
+    "noImplicitReturns": true,
+    "outDir": "./dist",
+    "rootDir": "./"
   },
   "exclude": ["node_modules", "jest"]
 }
