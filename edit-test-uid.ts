@@ -23,7 +23,7 @@ import * as fs from "fs";
  */
 
 async function changeUid(
-  memberId: string,
+  oldUid: string,
   newUid: string,
   firebaseConfig: any
 ): Promise<void> {
@@ -32,33 +32,33 @@ async function changeUid(
   const numEdits = await db.runTransaction(async tx => {
     const membersRef = db.collection("members");
     const opsRef = db.collection("operations");
-    const origMember = await membersRef.where("mid", "==", memberId).get();
-    const numOrig = origMember.docs.length;
-    if (numOrig !== 1) {
-      throw Error(
-        `Found ${numOrig} members with mid of ${memberId}, but expected exactly 1`
-      );
+
+    const origMember = await membersRef.doc(oldUid).get();
+    if (!origMember.exists) {
+      throw Error(`Did not find a member with the old UID of ${oldUid}`);
     }
-    const ops_created_by_orig = await opsRef
-      .where("creator_mid", "==", memberId)
+    const opsCreatedByOrig = await opsRef
+      .where("creator_uid", "==", oldUid)
       .get();
-    const ops_to_orig = await opsRef.where("data.to_mid", "==", memberId).get();
+    const opsToOrig = await opsRef.where("data.to_uid", "==", oldUid).get();
+
     tx.set(membersRef.doc(newUid), {
-      ...origMember.docs[0].data(),
+      ...origMember.data(),
       ...{ uid: newUid }
     });
-    tx.delete(membersRef.doc(origMember.docs[0].id));
+    tx.delete(membersRef.doc(oldUid));
+
     await Promise.all(
-      ops_created_by_orig.docs.map(d =>
+      opsCreatedByOrig.docs.map(d =>
         tx.update(opsRef.doc(d.id), { creator_uid: newUid })
       )
     );
     await Promise.all(
-      ops_to_orig.docs.map(d =>
+      opsToOrig.docs.map(d =>
         tx.update(opsRef.doc(d.id), { "data.to_uid": newUid })
       )
     );
-    return 1 + ops_created_by_orig.docs.length + ops_to_orig.docs.length;
+    return 1 + opsCreatedByOrig.docs.length + opsToOrig.docs.length;
   });
 
   console.log(`Set ${changeMsg} in ${numEdits} places`);
@@ -72,25 +72,25 @@ async function changeUid(
 
 const args = process.argv;
 
-if (args.length !== 5) {
+if (args.length !== 4) {
   console.error(
-    'Usage is "yarn edit-test-uid memberUsername memberPublicPin newUid, e.g. mark.ulrich.2777 vJle6l4K3jdEBk5CvZK4RYyxpFI2". You provided:',
+    'Usage is "yarn edit-test-uid oldUid newUid, e.g. skjr93di90j309u3e90jf0ja09j3j vJle6l4K3jdEBk5CvZK4RYyxpFI2". You provided:',
     args
   );
   process.exit(2);
 }
 
 const config = require("./firebase.test.config.json");
-const memberId = args[2];
+const oldUid = args[2];
 const newUid = args[3];
 
-const changeMsg = `member ID ${memberId} to uid ${newUid} in ${
+const changeMsg = `old member UID ${oldUid} to uid ${newUid} in ${
   config.projectId
 }`;
 
 console.log(`Going to change ${changeMsg}`);
 
-changeUid(memberId, newUid, config)
+changeUid(oldUid, newUid, config)
   .then(() => {
     console.info("Setting uid succeeded.");
     process.exit();

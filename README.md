@@ -12,7 +12,7 @@ authentication work while developing.
 yarn install  # install
 yarn backup-prod  # back up prod db locally
 yarn restore-test # restore test db from local backup
-yarn edit-test-uid memberPrefix memberPublicPin NEW_UID  # change uid for member account in test db, see more below.
+yarn edit-test-uid OLD_UID NEW_UID  # change uid for member account in test db, see more below.
 ```
 
 ### Edit your personal test uid.
