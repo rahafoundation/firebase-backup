@@ -1,5 +1,5 @@
 /**
- * Set/reset the created_at field on member objects and
+ * Set the created_at field on member objects and update the created_at field on
  * operations that were created from the original blockchain blocks.
  *
  * The created_at field will be equal to the block_at timestamp plus
@@ -19,6 +19,10 @@
  * mintable is initially calculated from the created_at timestamp
  * on the member object. (Note: after the first mint it is
  * calculated from the last_minted timestamp.)
+ *
+ * These early member objects don't have a created_at field.
+ * And, the early operations don't have created_at fields that
+ * reflect their block_at fields.
  */
 
 import * as path from "path";
