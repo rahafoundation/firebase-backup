@@ -62,21 +62,31 @@ async function setMemberCreatedAt(db: Firestore) {
       a.get("request_invite_block_seq") - b.get("request_invite_block_seq") ||
       a.get("request_invite_op_seq") - b.get("request_invite_op_seq")
   );
-  blockMembers.map(member => {
-    const blockSeq = member.get("request_invite_block_seq");
-    const opSeq = member.get("request_invite_op_seq");
-    const blockAt = member.get("request_invite_block_at");
-    const newCreatedAt = new Date(blockAt.getTime() + 1000 * opSeq);
-    console.log(
-      blockSeq,
-      opSeq,
-      blockAt,
-      "setting created_at to:",
-      newCreatedAt,
-      member.get("full_name")
-    );
-  });
-  // TODO update the member
+  await Promise.all(
+    blockMembers.map(async member => {
+      const memberId = member.id;
+      const blockSeq = member.get("request_invite_block_seq");
+      const opSeq = member.get("request_invite_op_seq");
+      const blockAt = member.get("request_invite_block_at");
+      const newCreatedAt = new Date(blockAt.getTime() + 1000 * opSeq);
+      console.log(
+        memberId,
+        blockSeq,
+        opSeq,
+        blockAt,
+        "setting created_at to:",
+        newCreatedAt,
+        member.get("full_name")
+      );
+
+      await db
+        .collection("members")
+        .doc(memberId)
+        .update({
+          created_at: newCreatedAt
+        });
+    })
+  );
 }
 
 async function updateOperationCreatedAt(db: Firestore) {
@@ -105,31 +115,41 @@ async function updateOperationCreatedAt(db: Firestore) {
   let blockCounter = 0;
   let opCounter = 0;
   let internalCounter = 0;
-  blockOps.map(op => {
-    const blockSeq = op.get("block_seq");
-    const opSeq = op.get("op_seq");
-    const blockAt = op.get("block_at");
+  await Promise.all(
+    blockOps.map(async op => {
+      const opId = op.id;
+      const blockSeq = op.get("block_seq");
+      const opSeq = op.get("op_seq");
+      const blockAt = op.get("block_at");
 
-    if (blockSeq !== blockCounter || opSeq !== opCounter) {
-      blockCounter = blockSeq;
-      opCounter = opSeq;
-      internalCounter = 0;
-    }
-    const newCreatedAt = new Date(
-      blockAt.getTime() + 1000 * opSeq + 1 * internalCounter
-    );
-    internalCounter++;
+      if (blockSeq !== blockCounter || opSeq !== opCounter) {
+        blockCounter = blockSeq;
+        opCounter = opSeq;
+        internalCounter = 0;
+      }
+      const newCreatedAt = new Date(
+        blockAt.getTime() + 1000 * opSeq + 1 * internalCounter
+      );
+      internalCounter++;
 
-    console.log(
-      blockSeq,
-      opSeq,
-      blockAt,
-      "updating created_at to:",
-      newCreatedAt,
-      op.get("op_code")
-    );
-    // TODO update the operation
-  });
+      console.log(
+        opId,
+        blockSeq,
+        opSeq,
+        blockAt,
+        "updating created_at to:",
+        newCreatedAt,
+        op.get("op_code")
+      );
+
+      await db
+        .collection("operations")
+        .doc(opId)
+        .update({
+          created_at: newCreatedAt
+        });
+    })
+  );
 }
 
 async function addCreatedAtField(db: Firestore) {
