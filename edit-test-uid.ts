@@ -1,21 +1,20 @@
 /**
- * Use this script to change the uid associated with a given member id in the
+ * Use this script to change the member ID associated with a given username in the
  * test database. This is useful when using the test database in order to allow
  * logging into existing accounts with your Firebase credentials in the test
  * application, after the database has been restored.
  *
  * For example, could do:
- * npm run edit-test-uid mark.ulrich.2777 vJle6l4K3jdEBk5CvZK4RYyxpFI2
+ * npm run edit-test-uid mark.ulrich.2777 vJle6l4K3jdEBk5CvZK4RYyxpFI2 [path to your firebase key]
  *
  * to make all member and operations documents associated with mark.ulrich.2777 to have
- * uid vJle6l4K3jdEBk5CvZK4RYyxpFI2. This is useful because the firebase auth UIDs are
- * different in prod and test, so after logging in on test you can see your uid in
- * the firebase authentication tab and then run this script to associate that test uid
- * with a given member id, so then you can log in as that member and view all
+ * uid vJle6l4K3jdEBk5CvZK4RYyxpFI2. This is useful because the firebase auth member IDs are
+ * different in prod and test, so after logging in on test you can see your member ID in
+ * the firebase authentication tab and then run this script to associate that test member ID
+ * with a given username, so then you can log in as that member and view all
  * public data for debugging and development purposes.
  */
-import * as firebase from "firebase";
-import * as fs from "fs";
+import * as admin from "firebase-admin";
 
 /* =======
  * Helpers
@@ -23,39 +22,59 @@ import * as fs from "fs";
  */
 
 async function changeUid(
-  memberId: string,
-  newUid: string,
-  firebaseConfig: any
+  username: string,
+  newMemberId: string,
+  pathToFbKey: string
 ): Promise<void> {
-  const app = firebase.initializeApp(config);
+  const firebaseKey = require(pathToFbKey);
+  const projectId = "raha-test";
+  if (firebaseKey.project_id !== projectId) {
+    throw Error(
+      `Must use project ${projectId} but path to firebase key credentials was for ${
+        firebaseKey.project_id
+      }`
+    );
+  }
+  // TODO similar logic in migrations/member-usernames ideally should be more DRY
+  const app = admin.initializeApp({
+    credential: admin.credential.cert(firebaseKey),
+    databaseURL: `https://${projectId}.firebaseio.com`
+  });
   const db = app.firestore();
   const numEdits = await db.runTransaction(async tx => {
     const membersRef = db.collection("members");
     const opsRef = db.collection("operations");
-    const origMember = await membersRef.where("mid", "==", memberId).get();
-    const numOrig = origMember.docs.length;
+    const origMembers = await membersRef
+      .where("username", "==", username)
+      .get();
+    const numOrig = origMembers.docs.length;
     if (numOrig !== 1) {
       throw Error(
-        `Found ${numOrig} members with mid of ${memberId}, but expected exactly 1`
+        `Found ${numOrig} members with username of ${username}, but expected exactly 1`
       );
     }
     const ops_created_by_orig = await opsRef
-      .where("creator_mid", "==", memberId)
+      .where("username", "==", username)
       .get();
-    const ops_to_orig = await opsRef.where("data.to_mid", "==", memberId).get();
-    tx.set(membersRef.doc(newUid), {
-      ...origMember.docs[0].data(),
-      ...{ uid: newUid }
+
+    const origMember = origMembers.docs[0];
+    // Note: UID is the old name for member ID.
+    const ops_to_orig = await opsRef
+      .where("data.to_uid", "==", origMember.id)
+      .get();
+    tx.set(membersRef.doc(newMemberId), {
+      ...origMember.data(),
+      ...{ uid: newMemberId }
     });
-    tx.delete(membersRef.doc(origMember.docs[0].id));
+    tx.delete(membersRef.doc(origMember.id));
     await Promise.all(
       ops_created_by_orig.docs.map(d =>
-        tx.update(opsRef.doc(d.id), { creator_uid: newUid })
+        tx.update(opsRef.doc(d.id), { creator_uid: newMemberId })
       )
     );
     await Promise.all(
       ops_to_orig.docs.map(d =>
-        tx.update(opsRef.doc(d.id), { "data.to_uid": newUid })
+        tx.update(opsRef.doc(d.id), { "data.to_uid": newMemberId })
       )
     );
     return 1 + ops_created_by_orig.docs.length + ops_to_orig.docs.length;
@@ -72,30 +91,27 @@ async function changeUid(
 
 const args = process.argv;
 
-if (args.length !== 4) {
+if (args.length !== 5) {
   console.error(
-    'Usage is "yarn edit-test-uid memberHandle newUid, e.g. mark.ulrich.2777 vJle6l4K3jdEBk5CvZK4RYyxpFI2". You provided:',
+    'Usage is "yarn edit-test-uid username newMemberId pathToFbKey, e.g. mark.ulrich.2777 vJle6l4K3jdEBk5CvZK4RYyxpFI2 [path to your firebase key]". You provided:',
     args
   );
   process.exit(2);
 }
 
-const config = require("./firebase.test.config.json");
-const memberId = args[2];
-const newUid = args[3];
+const username = args[2];
+const newMemberId = args[3];
 
-const changeMsg = `member ID ${memberId} to uid ${newUid} in ${
-  config.projectId
-  }`;
+const changeMsg = `username ${username} to member ID ${newMemberId}`;
 
 console.log(`Going to change ${changeMsg}`);
 
-changeUid(memberId, newUid, config)
+changeUid(username, newMemberId, args[4])
   .then(() => {
-    console.info("Setting uid succeeded.");
+    console.info("Setting member ID succeeded.");
     process.exit();
   })
   .catch(err => {
-    console.error("Setting uid failed.", err);
+    console.error("Setting member ID failed.", err);
     process.exit(1);
   });
