@@ -1,7 +1,7 @@
 /**
  * Some members had an inconsistently named request_invite_from_uid field.
  * The field was instead named requested_invite_from_uid. This standardizes
- * the name on all members to the former.
+ * the name on all members to the new request_invite_from_member_id.
  */
 
 import * as path from "path";
@@ -31,16 +31,29 @@ async function standardizeRequestInviteFromField(db: Firestore) {
         console.log(
           `Renaming field for member with id ${
             member.id
-          } from requested_invite_from_uid to request_invite_from_uid`
+          } from requested_invite_from_uid to request_invite_from_member_id`
         );
         await db
           .collection("members")
           .doc(member.id)
           .update({
-            request_invite_from_uid: BAD_KEY_requestedInviteFromMemberId,
+            request_invite_from_member_id: BAD_KEY_requestedInviteFromMemberId,
             requested_invite_from_uid: admin.firestore.FieldValue.delete()
           });
       }
+    } else {
+      console.log(
+        `Renaming field for member with id ${
+          member.id
+        } from request_invite_from_uid to request_invite_from_member_id`
+      );
+      await db
+        .collection("members")
+        .doc(member.id)
+        .update({
+          request_invite_from_member_id: requestInviteFromMemberId,
+          request_invite_from_uid: admin.firestore.FieldValue.delete()
+        });
     }
   }
 }
