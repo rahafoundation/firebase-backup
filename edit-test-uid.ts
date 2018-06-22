@@ -72,9 +72,9 @@ async function changeUid(
 
 const args = process.argv;
 
-if (args.length !== 5) {
+if (args.length !== 4) {
   console.error(
-    'Usage is "yarn edit-test-uid memberUsername memberPublicPin newUid, e.g. mark.ulrich.2777 vJle6l4K3jdEBk5CvZK4RYyxpFI2". You provided:',
+    'Usage is "yarn edit-test-uid memberHandle newUid, e.g. mark.ulrich.2777 vJle6l4K3jdEBk5CvZK4RYyxpFI2". You provided:',
     args
   );
   process.exit(2);
@@ -86,7 +86,7 @@ const newUid = args[3];
 
 const changeMsg = `member ID ${memberId} to uid ${newUid} in ${
   config.projectId
-}`;
+  }`;
 
 console.log(`Going to change ${changeMsg}`);
 
