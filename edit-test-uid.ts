@@ -53,11 +53,14 @@ async function changeUid(
         `Found ${numOrig} members with username of ${username}, but expected exactly 1`
       );
     }
+    const origMember = origMembers.docs[0];
+    if (origMember.id === newMemberId) {
+      throw Error("New member ID matches the old member ID.");
+    }
     const ops_created_by_orig = await opsRef
-      .where("username", "==", username)
+      .where("creator_uid", "==", username)
       .get();
 
-    const origMember = origMembers.docs[0];
     // Note: UID is the old name for member ID.
     const ops_to_orig = await opsRef
       .where("data.to_uid", "==", origMember.id)
