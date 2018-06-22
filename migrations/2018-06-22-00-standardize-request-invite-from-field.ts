@@ -1,6 +1,7 @@
 /**
- * Turns out even a bunch of newer members don't have created_at fields set.
- * Setting their created at fields from their request_invite fields.
+ * Some members had an inconsistently named request_invite_from_uid field.
+ * The field was instead named requested_invite_from_uid. This standardizes
+ * the name on all members to the former.
  */
 
 import * as path from "path";
