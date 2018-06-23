@@ -47,7 +47,9 @@ async function setIsInviteConfirmed(db: Firestore) {
       continue;
     }
 
-    const requestInviteFromMemberId = member.get("request_invite_from_uid");
+    const requestInviteFromMemberId = member.get(
+      "request_invite_from_member_id"
+    );
     const inviteOp = inviteOps[0];
     const inviteOpData = inviteOp.get("data");
     if (!requestInviteFromMemberId) {
@@ -58,6 +60,7 @@ async function setIsInviteConfirmed(db: Firestore) {
         .update({
           invite_confirmed: true
         });
+      continue;
     } else if (requestInviteFromMemberId !== inviteOpData.to_uid) {
       console.log(
         `member ${
