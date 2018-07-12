@@ -7,6 +7,7 @@ import { SSL_OP_NETSCAPE_DEMO_CIPHER_CHANGE_BUG } from "constants";
 import { Query, CollectionReference } from "@google-cloud/firestore";
 
 const readFileAsync = util.promisify(fs.readFile);
+const MAX_ENTITIES_PER_CALL = 500;
 
 function deserialize(serialized: string) {
   return eval(`(${serialized})`);
@@ -24,11 +25,14 @@ async function deleteAllDocsInCollection(
 
     const last = snapshot.docs[snapshot.docs.length - 1];
 
-    const batch = collection.firestore.batch();
-    snapshot.docs.forEach(doc => {
-      batch.delete(doc.ref);
-    });
-
+    let batch = collection.firestore.batch();
+    for (let i = 0; i < fetchSize; i++) {
+      if (i > 0 && i % MAX_ENTITIES_PER_CALL === 0) {
+        await batch.commit();
+        batch = collection.firestore.batch();
+      }
+      batch.delete(snapshot.docs[i].ref);
+    }
     await batch.commit();
     numDeleted += fetchSize;
     curCollectionView = collection.startAfter(last);
