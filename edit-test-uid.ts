@@ -58,16 +58,20 @@ async function changeUid(
       throw Error("New member ID matches the old member ID.");
     }
     const ops_created_by_orig = await opsRef
-      .where("creator_uid", "==", username)
+      .where("creator_uid", "==", origMember.id)
       .get();
 
     // Note: UID is the old name for member ID.
     const ops_to_orig = await opsRef
       .where("data.to_uid", "==", origMember.id)
       .get();
+
+    const members_invited_by_orig = await membersRef
+      .where("request_invite_from_member_id", "==", origMember.id)
+      .get();
+
     tx.set(membersRef.doc(newMemberId), {
-      ...origMember.data(),
-      ...{ uid: newMemberId }
+      ...origMember.data()
     });
     tx.delete(membersRef.doc(origMember.id));
     await Promise.all(
@@ -80,7 +84,19 @@ async function changeUid(
         tx.update(opsRef.doc(d.id), { "data.to_uid": newMemberId })
       )
     );
-    return 1 + ops_created_by_orig.docs.length + ops_to_orig.docs.length;
+    await Promise.all(
+      members_invited_by_orig.docs.map(d =>
+        tx.update(membersRef.doc(d.id), {
+          request_invite_from_member_id: newMemberId
+        })
+      )
+    );
+    return (
+      1 +
+      ops_created_by_orig.docs.length +
+      ops_to_orig.docs.length +
+      members_invited_by_orig.docs.length
+    );
   });
 
   console.log(`Set ${changeMsg} in ${numEdits} places`);
