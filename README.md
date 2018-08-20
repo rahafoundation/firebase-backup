@@ -29,3 +29,15 @@ Or, if you have sufficient permissions (or have created your own firestore db
 and set [`firebase.test.config.json`](firebase.test.config.json) to point
 there), can look up your new authentication uid used in the test db so that you
 can log in while developing locally. Then, run the command listed above.
+
+### Running migrations
+
+Migrations can be found in the `/migrations` directory and are run manually since
+we currently don't have any framework to manage them or version the schema in
+Firestore.
+
+Scripts in the directory provide a good example of how one might write a new migration.
+
+Migrations are run by `yarn run ts-node migrations/<script-name>`. Most migrations expect
+`[path_to_firebase_credentials] [project_name]` as arguments. See the actual
+migration script you are trying to run to confirm.
