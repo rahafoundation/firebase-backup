@@ -30,7 +30,9 @@ import { Firestore } from "@google-cloud/firestore";
 import {
   Operation,
   OperationType,
-  VerifyOperation
+  VerifyOperation,
+  InviteOperation,
+  RequestVerificationOperation
 } from "@raha/api-shared/dist/models/Operation";
 import { Omit } from "@raha/api-shared/dist/helpers/Omit";
 
@@ -50,6 +52,16 @@ export const ORIGINAL_GENESIS_TRUST_OPS = [
 ];
 
 const GENESIS = "GENESIS";
+
+/**
+ * Generates an alphanumeric string token of length 10 or 11.
+ */
+export function generateToken() {
+  return Math.random()
+    .toString(36)
+    .slice(2)
+    .toString();
+}
 
 function getInviteVideoUrlForMemberId(memberId: string) {
   return `https://storage.googleapis.com/raha-video/${memberId}/invite.mp4`;
@@ -90,11 +102,10 @@ async function migrateToCreateMemberAndVerify(db: Firestore, dryRun: boolean) {
       const newMemberMemberId = operationData.creator_uid;
       const operationToUid = operationData.data.to_uid;
 
+      const isGenesisOp = GENESIS_REQUEST_INVITE_OPS.indexOf(operation.id) >= 0;
+
       const inviterMemberId =
-        operationToUid === null &&
-        GENESIS_REQUEST_INVITE_OPS.indexOf(operation.id) >= 0
-          ? GENESIS
-          : operationToUid;
+        operationToUid === null && isGenesisOp ? GENESIS : operationToUid;
 
       if (invitedBy[newMemberMemberId] !== undefined) {
         console.error("Member has already requested an invite!");
@@ -102,18 +113,76 @@ async function migrateToCreateMemberAndVerify(db: Firestore, dryRun: boolean) {
         invitedBy[newMemberMemberId] = inviterMemberId;
       }
 
+      const token = generateToken();
+
+      // Generate Invite operations for every non-GENESIS RequestInvite
+      const newInviteOp: Omit<InviteOperation, "id"> | undefined = !isGenesisOp
+        ? {
+            op_code: OperationType.INVITE,
+            created_at: new Date(
+              new Date(operationData.created_at).getUTCMilliseconds() - 1
+            ),
+            creator_uid: inviterMemberId,
+            data: {
+              video_token: token,
+              is_joint_video: true,
+              invite_token: token
+            }
+          }
+        : undefined;
+      // Generate RequestVerification operations for every non-GENESIS RequestInvite
+      const newRequestVerificationOp:
+        | Omit<RequestVerificationOperation, "id">
+        | undefined = !isGenesisOp
+        ? {
+            op_code: OperationType.REQUEST_VERIFICATION,
+            // The RequestVerification operation is usually created at the same time as the CreateMember operation.
+            created_at: new Date(operationData.created_at),
+            creator_uid: newMemberMemberId,
+            data: {
+              to_uid: inviterMemberId,
+              invite_token: token
+            }
+          }
+        : undefined;
+
+      // TODO: We will be unable to find the video - should we explicitly copy a video to this token for unverified users? Or just
+      // force them to record a new video? Maybe sensible default for joint invites where one can't find the invite video is to
+      // look at the user's identity video?
+
       const updatesToOperation = {
         op_code: OperationType.CREATE_MEMBER,
         "data.request_invite_from_member_id": inviterMemberId,
         "data.to_uid": admin.firestore.FieldValue.delete()
       };
+      if (newInviteOp) {
+        console.log("=============================");
+        console.log("Creating Invite operation", newInviteOp);
+        console.log("=============================");
+      }
       console.log("=============================");
       console.log("Updating operation", operation.id);
       console.log("Operation was", operationData);
       console.log("Update", updatesToOperation);
       console.log("=============================");
+      if (newRequestVerificationOp) {
+        console.log("=============================");
+        console.log(
+          "Creating RequestVerification operation",
+          newRequestVerificationOp
+        );
+        console.log("=============================");
+      }
       if (!dryRun) {
+        if (newInviteOp) {
+          await operationsCollection.add(newInviteOp);
+          ++createdOperations;
+        }
         await operation.ref.update(updatesToOperation);
+        if (newRequestVerificationOp) {
+          await operationsCollection.add(newRequestVerificationOp);
+          ++createdOperations;
+        }
         ++updatedOperations;
       }
     }
