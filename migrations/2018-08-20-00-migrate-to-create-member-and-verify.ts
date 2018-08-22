@@ -80,166 +80,173 @@ async function migrateToCreateMemberAndVerify(db: Firestore, dryRun: boolean) {
   const newGenesisVerifyOperations: string[] = [];
 
   for (const i in operations) {
-    const operation = operations[i];
-    const operationData = operation.data() as Operation;
+    await db.runTransaction(async transaction => {
+      const operation = operations[i];
+      const operationData = operation.data() as Operation;
 
-    if (operationData.op_code === OperationType.CREATE_MEMBER) {
-      if (operationData.data.request_invite_from_member_id) {
-        invitedBy[operationData.creator_uid] =
-          operationData.data.request_invite_from_member_id;
-      }
-    }
-
-    // Skip non-request-invite and non-trust operations
-    if (
-      operationData.op_code !== OperationType.REQUEST_INVITE &&
-      operationData.op_code !== OperationType.TRUST
-    ) {
-      continue;
-    }
-
-    if (operationData.op_code === OperationType.REQUEST_INVITE) {
-      const newMemberMemberId = operationData.creator_uid;
-      const operationToUid = operationData.data.to_uid;
-
-      const isGenesisOp = GENESIS_REQUEST_INVITE_OPS.indexOf(operation.id) >= 0;
-
-      const inviterMemberId =
-        operationToUid === null && isGenesisOp ? GENESIS : operationToUid;
-
-      if (invitedBy[newMemberMemberId] !== undefined) {
-        console.error("Member has already requested an invite!");
-      } else {
-        invitedBy[newMemberMemberId] = inviterMemberId;
+      if (operationData.op_code === OperationType.CREATE_MEMBER) {
+        if (operationData.data.request_invite_from_member_id) {
+          invitedBy[operationData.creator_uid] =
+            operationData.data.request_invite_from_member_id;
+        }
       }
 
-      const token = generateToken();
+      // Skip non-request-invite and non-trust operations
+      if (
+        operationData.op_code !== OperationType.REQUEST_INVITE &&
+        operationData.op_code !== OperationType.TRUST
+      ) {
+        return;
+      }
 
-      // Generate Invite operations for every non-GENESIS RequestInvite
-      const newInviteOp: Omit<InviteOperation, "id"> | undefined = !isGenesisOp
-        ? {
-            op_code: OperationType.INVITE,
-            created_at: new Date(
-              new Date(operationData.created_at).getUTCMilliseconds() - 1
-            ),
-            creator_uid: inviterMemberId,
-            data: {
-              video_token: token,
-              is_joint_video: true,
-              invite_token: token
+      if (operationData.op_code === OperationType.REQUEST_INVITE) {
+        const newMemberMemberId = operationData.creator_uid;
+        const operationToUid = operationData.data.to_uid;
+
+        const isGenesisOp = GENESIS_REQUEST_INVITE_OPS.includes(operation.id);
+
+        const inviterMemberId =
+          operationToUid === null && isGenesisOp ? GENESIS : operationToUid;
+
+        if (invitedBy[newMemberMemberId] !== undefined) {
+          console.error("Member has already requested an invite!");
+        } else {
+          invitedBy[newMemberMemberId] = inviterMemberId;
+        }
+
+        const token = generateToken();
+
+        // Generate Invite operations for every non-GENESIS RequestInvite
+        const newInviteOp:
+          | Omit<InviteOperation, "id">
+          | undefined = !isGenesisOp
+          ? {
+              op_code: OperationType.INVITE,
+              created_at: new Date(
+                new Date(operationData.created_at).getUTCMilliseconds() - 1
+              ),
+              creator_uid: inviterMemberId,
+              data: {
+                video_token: token,
+                is_joint_video: true,
+                invite_token: token
+              }
             }
-          }
-        : undefined;
-      // Generate RequestVerification operations for every non-GENESIS RequestInvite
-      const newRequestVerificationOp:
-        | Omit<RequestVerificationOperation, "id">
-        | undefined = !isGenesisOp
-        ? {
-            op_code: OperationType.REQUEST_VERIFICATION,
-            // The RequestVerification operation is usually created at the same time as the CreateMember operation.
-            created_at: new Date(operationData.created_at),
-            creator_uid: newMemberMemberId,
-            data: {
-              to_uid: inviterMemberId,
-              invite_token: token
+          : undefined;
+        // Generate RequestVerification operations for every non-GENESIS RequestInvite
+        const newRequestVerificationOp:
+          | Omit<RequestVerificationOperation, "id">
+          | undefined = !isGenesisOp
+          ? {
+              op_code: OperationType.REQUEST_VERIFICATION,
+              // The RequestVerification operation is usually created at the same time as the CreateMember operation.
+              created_at: new Date(operationData.created_at),
+              creator_uid: newMemberMemberId,
+              data: {
+                to_uid: inviterMemberId,
+                invite_token: token
+              }
             }
-          }
-        : undefined;
+          : undefined;
 
-      // TODO: We will be unable to find the video - should we explicitly copy a video to this token for unverified users? Or just
-      // force them to record a new video? Maybe sensible default for joint invites where one can't find the invite video is to
-      // look at the user's identity video?
+        // TODO: We will be unable to find the video - should we explicitly copy a video to this token for unverified users? Or just
+        // force them to record a new video? Maybe sensible default for joint invites where one can't find the invite video is to
+        // look at the user's identity video?
 
-      const updatesToOperation = {
-        op_code: OperationType.CREATE_MEMBER,
-        "data.request_invite_from_member_id": inviterMemberId,
-        "data.to_uid": admin.firestore.FieldValue.delete()
-      };
-      if (newInviteOp) {
-        console.log("=============================");
-        console.log("Creating Invite operation", newInviteOp);
-        console.log("=============================");
-      }
-      console.log("=============================");
-      console.log("Updating operation", operation.id);
-      console.log("Operation was", operationData);
-      console.log("Update", updatesToOperation);
-      console.log("=============================");
-      if (newRequestVerificationOp) {
-        console.log("=============================");
-        console.log(
-          "Creating RequestVerification operation",
-          newRequestVerificationOp
-        );
-        console.log("=============================");
-      }
-      if (!dryRun) {
-        if (newInviteOp) {
-          await operationsCollection.add(newInviteOp);
-          ++createdOperations;
-        }
-        await operation.ref.update(updatesToOperation);
-        if (newRequestVerificationOp) {
-          await operationsCollection.add(newRequestVerificationOp);
-          ++createdOperations;
-        }
-        ++updatedOperations;
-      }
-    }
-    if (operationData.op_code === OperationType.TRUST) {
-      const opCreatorUid = operationData.creator_uid;
-
-      const trusterMemberId =
-        opCreatorUid === null &&
-        ORIGINAL_GENESIS_TRUST_OPS.indexOf(operation.id) >= 0
-          ? GENESIS
-          : opCreatorUid;
-      const trustedMemberId = operationData.data.to_uid;
-
-      if (invitedBy[trustedMemberId] === trusterMemberId) {
-        // Check if this is a request-invite confirming Trust operation
-        // Check if the requisite "Verify" operation already exists.
-        // Allows this migration to be idempotent.
-        if (
-          !(await operationsCollection
-            .where("op_code", "==", OperationType.VERIFY)
-            .where("creator_uid", "==", trusterMemberId)
-            .where("data.to_uid", "==", trustedMemberId)
-            .get()).empty
-        ) {
-          continue;
-        }
-
-        const newVerifyOperation: Omit<VerifyOperation, "id"> = {
-          op_code: OperationType.VERIFY,
-          creator_uid: trusterMemberId,
-          created_at: new Date(operationData.created_at),
-          data: {
-            to_uid: trustedMemberId,
-            video_url: getInviteVideoUrlForMemberId(trustedMemberId)
-          }
+        const updatesToOperation = {
+          op_code: OperationType.CREATE_MEMBER,
+          "data.request_invite_from_member_id": inviterMemberId,
+          "data.to_uid": admin.firestore.FieldValue.delete()
         };
-
+        if (newInviteOp) {
+          console.log("=============================");
+          console.log("Creating Invite operation", newInviteOp);
+          console.log("=============================");
+        }
         console.log("=============================");
-        console.log(
-          "Creating a new verify operation for trust operation with id",
-          operation.id
-        );
-        console.log("Trust operation was", operationData);
-        console.log("Verify operation is", newVerifyOperation);
+        console.log("Updating operation", operation.id);
+        console.log("Operation was", operationData);
+        console.log("Update", updatesToOperation);
         console.log("=============================");
-        if (!dryRun) {
-          const newVerifyOp = await operationsCollection.add(
-            newVerifyOperation
+        if (newRequestVerificationOp) {
+          console.log("=============================");
+          console.log(
+            "Creating RequestVerification operation",
+            newRequestVerificationOp
           );
-          if (ORIGINAL_GENESIS_TRUST_OPS.indexOf(operation.id) >= 0) {
-            await operation.ref.delete();
-            newGenesisVerifyOperations.push(newVerifyOp.id);
+          console.log("=============================");
+        }
+        if (!dryRun) {
+          if (newInviteOp) {
+            transaction.create(operationsCollection.doc(), newInviteOp);
+            ++createdOperations;
           }
-          ++createdOperations;
+          transaction.update(operation.ref, updatesToOperation);
+          if (newRequestVerificationOp) {
+            transaction.create(
+              operationsCollection.doc(),
+              newRequestVerificationOp
+            );
+            ++createdOperations;
+          }
+          ++updatedOperations;
         }
       }
-    }
+      if (operationData.op_code === OperationType.TRUST) {
+        const opCreatorUid = operationData.creator_uid;
+
+        const trusterMemberId =
+          opCreatorUid === null &&
+          ORIGINAL_GENESIS_TRUST_OPS.includes(operation.id)
+            ? GENESIS
+            : opCreatorUid;
+        const trustedMemberId = operationData.data.to_uid;
+
+        if (invitedBy[trustedMemberId] === trusterMemberId) {
+          // Check if this is a request-invite confirming Trust operation
+          // Check if the requisite "Verify" operation already exists.
+          // Allows this migration to be idempotent.
+          if (
+            !(await transaction.get(
+              operationsCollection
+                .where("op_code", "==", OperationType.VERIFY)
+                .where("creator_uid", "==", trusterMemberId)
+                .where("data.to_uid", "==", trustedMemberId)
+            )).empty
+          ) {
+            return;
+          }
+
+          const newVerifyOperation: Omit<VerifyOperation, "id"> = {
+            op_code: OperationType.VERIFY,
+            creator_uid: trusterMemberId,
+            created_at: new Date(operationData.created_at),
+            data: {
+              to_uid: trustedMemberId,
+              video_url: getInviteVideoUrlForMemberId(trustedMemberId)
+            }
+          };
+
+          console.log("=============================");
+          console.log(
+            "Creating a new verify operation for trust operation with id",
+            operation.id
+          );
+          console.log("Trust operation was", operationData);
+          console.log("Verify operation is", newVerifyOperation);
+          console.log("=============================");
+          if (!dryRun) {
+            const newVerifyOpRef = operationsCollection.doc();
+            transaction.create(newVerifyOpRef, newVerifyOperation);
+            if (ORIGINAL_GENESIS_TRUST_OPS.includes(operation.id)) {
+              transaction.delete(operation.ref);
+              newGenesisVerifyOperations.push(newVerifyOpRef.id);
+            }
+            ++createdOperations;
+          }
+        }
+      }
+    });
   }
   console.log(`Created ${createdOperations} operations.`);
   console.log(`Updated ${updatedOperations} operations.`);
@@ -277,7 +284,7 @@ async function main() {
     return;
   }
   const db = getDb(args[2], args[3]);
-  let isDryRun = args.length > 4 ? args[4] !== "false" : true;
+  const isDryRun = args.length > 4 ? args[4] !== "false" : true;
   await migrateToCreateMemberAndVerify(db, isDryRun);
 }
 
