@@ -57,13 +57,21 @@ async function changeUid(
     if (origMember.id === newMemberId) {
       throw Error("New member ID matches the old member ID.");
     }
-    const ops_created_by_orig = await opsRef
+    const ops_creator_uid = await opsRef
       .where("creator_uid", "==", origMember.id)
       .get();
 
     // Note: UID is the old name for member ID.
-    const ops_to_orig = await opsRef
+    const ops_to_uid = await opsRef
       .where("data.to_uid", "==", origMember.id)
+      .get();
+
+    const ops_request_from_member_id = await opsRef
+      .where("data.request_invite_from_member_id", "==", origMember.id)
+      .get();
+
+    const ops_invited_member_id = await opsRef
+      .where("data.invited_member_id", "==", origMember.id)
       .get();
 
     const members_invited_by_orig = await membersRef
@@ -75,27 +83,43 @@ async function changeUid(
     });
     tx.delete(membersRef.doc(origMember.id));
     await Promise.all(
-      ops_created_by_orig.docs.map(d =>
+      ops_creator_uid.docs.map(d =>
         tx.update(opsRef.doc(d.id), { creator_uid: newMemberId })
       )
     );
     await Promise.all(
-      ops_to_orig.docs.map(d =>
+      ops_to_uid.docs.map(d =>
         tx.update(opsRef.doc(d.id), { "data.to_uid": newMemberId })
+      )
+    );
+    await Promise.all(
+      ops_request_from_member_id.docs.map(d =>
+        tx.update(opsRef.doc(d.id), {
+          "data.request_invite_from_member_id": newMemberId
+        })
+      )
+    );
+    await Promise.all(
+      ops_invited_member_id.docs.map(d =>
+        tx.update(opsRef.doc(d.id), {
+          "data.invited_member_id": newMemberId
+        })
       )
     );
     await Promise.all(
       members_invited_by_orig.docs.map(d =>
         tx.update(membersRef.doc(d.id), {
-          request_invite_from_member_id: newMemberId
+          "data.request_invite_from_member_id": newMemberId
         })
       )
     );
     return (
       1 +
-      ops_created_by_orig.docs.length +
-      ops_to_orig.docs.length +
-      members_invited_by_orig.docs.length
+      ops_creator_uid.docs.length +
+      ops_to_uid.docs.length +
+      members_invited_by_orig.docs.length +
+      ops_request_from_member_id.docs.length +
+      ops_invited_member_id.docs.length
     );
   });
 
