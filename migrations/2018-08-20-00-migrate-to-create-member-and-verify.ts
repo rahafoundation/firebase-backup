@@ -81,8 +81,16 @@ async function migrateToCreateMemberAndVerify(db: Firestore, dryRun: boolean) {
 
   for (const i in operations) {
     await db.runTransaction(async transaction => {
-      const operation = operations[i];
-      const operationData = operation.data() as Operation;
+      const operation = await transaction.get(
+        operationsCollection.doc(operations[i].id)
+      );
+      const operationData = operation.exists
+        ? (operation.data() as Operation)
+        : undefined;
+
+      if (!operationData) {
+        return;
+      }
 
       if (operationData.op_code === OperationType.CREATE_MEMBER) {
         if (operationData.data.request_invite_from_member_id) {
