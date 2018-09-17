@@ -8,7 +8,7 @@ import {
 } from "@google-cloud/firestore";
 
 export function getDb(pathToFbKey: string, projectId: string) {
-  const firebaseKey = require(pathToFbKey[0] == "/"
+  const firebaseKey = require(pathToFbKey[0] == "/" || pathToFbKey[0] == "~"
     ? pathToFbKey
     : path.resolve(path.join(process.cwd(), pathToFbKey)));
   if (firebaseKey.project_id !== projectId) {

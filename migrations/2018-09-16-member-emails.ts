@@ -24,22 +24,22 @@ async function getMemberIdNoEmail(db: Firestore): Promise<string[]> {
 }
 
 async function getMemberIdToEmail(pathToEmails: string) {
-    console.log(`Reading auth file from ${pathToEmails}`);
-    // Get this file by running firebase auth:export --format=csv
-    const emailCsv = await readFileAsync(pathToEmails, "utf8");
-    const memberIdToEmail: { [index: string]: string } = {};
-    emailCsv.split("\n").forEach(s => {
-      const frags = s.split(",");
-      const memberId = frags[0];
-      const email = frags[1];
-      if (memberId && email) {
-        if (email.indexOf("@") === -1) {
-          throw Error(`Bad email ${email}`);
-        }
-        memberIdToEmail[memberId] = email;
+  console.log(`Reading auth file from ${pathToEmails}`);
+  // Get this file by running firebase auth:export --format=csv
+  const emailCsv = await readFileAsync(pathToEmails, "utf8");
+  const memberIdToEmail: { [index: string]: string } = {};
+  emailCsv.split("\n").forEach(s => {
+    const frags = s.split(",");
+    const memberId = frags[0];
+    const email = frags[1];
+    if (memberId && email) {
+      if (email.indexOf("@") === -1) {
+        throw Error(`Bad email ${email}`);
       }
-    });
-    return memberIdToEmail;
+      memberIdToEmail[memberId] = email;
+    }
+  });
+  return memberIdToEmail;
 }
 
 async function main() {
@@ -51,17 +51,22 @@ async function main() {
     let numSet = 0;
     const batch = db.batch();
     membersMissingEmails.forEach(memberId => {
-        const email = memberIdToEmail[memberId];
-        if (email) {
-            batch.update(db.collection("members").doc(memberId), {[EMAIL_FIELD]: email, email_address_is_verified: true});
-            numSet++;
-        }
+      const email = memberIdToEmail[memberId];
+      if (email) {
+        batch.update(db.collection("members").doc(memberId), {
+          [EMAIL_FIELD]: email,
+          email_address_is_verified: true
+        });
+        numSet++;
+      }
     });
     if (numSet > 500) {
-      throw Error('Cannot set over 500 in single batch');
+      throw Error("Cannot set over 500 in single batch");
     }
     await batch.commit();
-    console.info(`Added emails to ${numSet} of the ${membersMissingEmails.length} missing`);
+    console.info(
+      `Added emails to ${numSet} of the ${membersMissingEmails.length} missing`
+    );
     process.exit(0);
   } catch (err) {
     console.error("Adding emails failed.", err);
