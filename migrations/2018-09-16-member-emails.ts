@@ -53,10 +53,13 @@ async function main() {
     membersMissingEmails.forEach(memberId => {
         const email = memberIdToEmail[memberId];
         if (email) {
-            batch.update(db.collection("members").doc(memberId), {[EMAIL_FIELD]: email});
+            batch.update(db.collection("members").doc(memberId), {[EMAIL_FIELD]: email, email_address_is_verified: true});
             numSet++;
         }
     });
+    if (numSet > 500) {
+      throw Error('Cannot set over 500 in single batch');
+    }
     await batch.commit();
     console.info(`Added emails to ${numSet} of the ${membersMissingEmails.length} missing`);
     process.exit(0);
