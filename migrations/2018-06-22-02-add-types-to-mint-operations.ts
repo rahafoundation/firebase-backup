@@ -11,7 +11,7 @@ import {
   DocumentSnapshot
 } from "@google-cloud/firestore";
 
-import { getDb } from "./helpers";
+import { getDb } from "../helpers";
 import { request } from "http";
 
 async function addBasicIncomeTypeToMintOperations(db: Firestore) {

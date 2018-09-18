@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import * as util from "util";
-import { getDb, fetchEntireCollection } from "./helpers";
+import { getDb, fetchEntireCollection } from "../helpers";
 import { Firestore } from "@google-cloud/firestore";
 
 const readFileAsync = util.promisify(fs.readFile);
