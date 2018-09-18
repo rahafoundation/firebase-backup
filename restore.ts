@@ -1,10 +1,8 @@
-import * as admin from "firebase-admin";
-import * as firebase from "firebase";
 import * as readline from "readline";
 import * as fs from "fs";
 import * as util from "util";
-import { SSL_OP_NETSCAPE_DEMO_CIPHER_CHANGE_BUG } from "constants";
 import { Query, CollectionReference } from "@google-cloud/firestore";
+import { getDb } from "./helpers";
 
 const readFileAsync = util.promisify(fs.readFile);
 const MAX_ENTITIES_PER_CALL = 500;
@@ -41,30 +39,13 @@ async function deleteAllDocsInCollection(
 }
 
 async function restoreDatabase(pathToFbKey: string): Promise<void> {
-  const firebaseKey = require(pathToFbKey);
-  const projectId = "raha-test";
-  if (firebaseKey.project_id !== projectId) {
-    throw Error(
-      `Must use project ${projectId} but path to firebase key credentials was for ${
-        firebaseKey.project_id
-      }`
-    );
-  }
-  // TODO similar logic in migrations/member-usernames ideally should be more DRY
-  const app = admin.initializeApp({
-    credential: admin.credential.cert(firebaseKey),
-    databaseURL: `https://${projectId}.firebaseio.com`
-  });
-  const auth = app.auth();
-  const db = app.firestore();
+  const testConfig = require("./firebase.test.config.json");
+  const db = getDb(pathToFbKey, testConfig.projectId);
 
   const collectionsToRestore = {
     operations: db.collection("operations"),
     members: db.collection("members")
   };
-
-  let numCollectionsRestored = 0;
-  const numCollectionsToRestore = Object.keys(collectionsToRestore).length;
 
   await Promise.all(
     Object.entries(collectionsToRestore).map(
