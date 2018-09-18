@@ -14,7 +14,7 @@
  * with a given username, so then you can log in as that member and view all
  * public data for debugging and development purposes.
  */
-import * as admin from "firebase-admin";
+import { getDb } from "./helpers";
 
 /* =======
  * Helpers
@@ -26,21 +26,9 @@ async function changeUid(
   newMemberId: string,
   pathToFbKey: string
 ): Promise<void> {
-  const firebaseKey = require(pathToFbKey);
-  const projectId = "raha-test";
-  if (firebaseKey.project_id !== projectId) {
-    throw Error(
-      `Must use project ${projectId} but path to firebase key credentials was for ${
-        firebaseKey.project_id
-      }`
-    );
-  }
-  // TODO similar logic in migrations/member-usernames ideally should be more DRY
-  const app = admin.initializeApp({
-    credential: admin.credential.cert(firebaseKey),
-    databaseURL: `https://${projectId}.firebaseio.com`
-  });
-  const db = app.firestore();
+  const testConfig = require("./firebase.test.config.json");
+  const db = getDb(pathToFbKey, testConfig.projectId);
+
   const numEdits = await db.runTransaction(async tx => {
     const membersRef = db.collection("members");
     const opsRef = db.collection("operations");
