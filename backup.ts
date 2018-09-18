@@ -1,7 +1,8 @@
-import * as firebase from "firebase";
 import * as util from "util";
 import * as fs from "fs";
 import * as serialize from "serialize-javascript";
+import { getDb } from "./helpers";
+import { CollectionReference, Query } from "@google-cloud/firestore";
 
 const writeFile = util.promisify(fs.writeFile);
 
@@ -12,10 +13,10 @@ const writeFile = util.promisify(fs.writeFile);
 
 async function storeQueryResult(
   name: string,
-  collection: firebase.firestore.CollectionReference
+  collection: CollectionReference
 ): Promise<void> {
   let backup: any[] = [];
-  let curCollectionView: firebase.firestore.Query = collection;
+  let curCollectionView: Query = collection;
   let docs = [];
   while (true) {
     const snapshot = await curCollectionView.get();
@@ -37,7 +38,9 @@ async function storeQueryResult(
   console.log(`${backup.length} records written for ${name}.`);
 }
 
-async function storeAllQueries(): Promise<void> {
+async function storeAllQueries(collectionsToBackup: {
+  [collectionName: string]: CollectionReference;
+}): Promise<void> {
   await Promise.all(
     Object.entries(collectionsToBackup).map(([name, collection]) =>
       storeQueryResult(name, collection)
@@ -49,23 +52,36 @@ async function storeAllQueries(): Promise<void> {
  * Script
  * ======
  */
+async function main() {
+  console.log("Backing up prod Member and Operation collections.");
+  console.log("Arguments: path_to_credentials_file");
 
-const prodConfig = require("./firebase.prod.config.json");
-firebase.initializeApp(prodConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
+  const args = process.argv;
+  if (args.length < 3) {
+    console.warn(
+      "Invalid number of arguments. See usage information above. Exiting."
+    );
+    return;
+  }
 
-const collectionsToBackup = {
-  operations: db.collection("operations"),
-  members: db.collection("members")
-};
+  const prodConfig = require("./firebase.prod.config.json");
+  const db = getDb(args[2], prodConfig.projectId);
 
-storeAllQueries()
-  .then(() => {
+  const collectionsToBackup = {
+    operations: db.collection("operations"),
+    members: db.collection("members")
+  };
+
+  try {
+    await storeAllQueries(collectionsToBackup);
     console.info("Back up succeeded.");
-    process.exit();
-  })
-  .catch(err => {
-    console.error("Back up failed.", err);
+    process.exit(0);
+  } catch (exception) {
+    console.error("Back up failed.", exception);
     process.exit(1);
-  });
+  }
+}
+
+main().then(() => {
+  process.exit(0);
+});
