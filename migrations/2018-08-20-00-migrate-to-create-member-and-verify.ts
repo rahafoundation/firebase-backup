@@ -36,7 +36,7 @@ import {
 } from "@raha/api-shared/dist/models/Operation";
 import { Omit } from "@raha/api-shared/dist/helpers/Omit";
 
-import { getDb } from "./helpers";
+import { getDb } from "../helpers";
 
 export const GENESIS_REQUEST_INVITE_OPS = [
   "InuYAjMISl6operovXIR",

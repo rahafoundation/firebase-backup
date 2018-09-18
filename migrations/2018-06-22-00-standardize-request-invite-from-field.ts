@@ -4,13 +4,10 @@
  * the name on all members to the new request_invite_from_member_id.
  */
 
-
 import * as admin from "firebase-admin";
-import {
-  Firestore,
-} from "@google-cloud/firestore";
+import { Firestore } from "@google-cloud/firestore";
 
-import { getDb } from "./helpers";
+import { getDb } from "../helpers";
 
 async function standardizeRequestInviteFromField(db: Firestore) {
   const members = (await db.collection("members").get()).docs;
