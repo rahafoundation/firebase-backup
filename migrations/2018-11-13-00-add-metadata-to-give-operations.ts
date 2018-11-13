@@ -1,5 +1,5 @@
 /**
- * Add the metadata block including GIVE type to all Give operations. In preparation for tipping functionality.
+ * Add the metadata block including GiveType.DIRECT_GIVE to all legacy GIVE operations. In preparation for tipping functionality.
  */
 
 import * as path from "path";
