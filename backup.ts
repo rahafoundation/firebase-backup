@@ -17,7 +17,6 @@ async function storeQueryResult(
 ): Promise<void> {
   let backup: any[] = [];
   let curCollectionView: Query = collection;
-  let docs = [];
   while (true) {
     const snapshot = await curCollectionView.get();
     const fetchSize = snapshot.docs.length;
@@ -69,7 +68,8 @@ async function main() {
 
   const collectionsToBackup = {
     operations: db.collection("operations"),
-    members: db.collection("members")
+    members: db.collection("members"),
+    notificationHistory: db.collection("notificationHistory")
   };
 
   try {
