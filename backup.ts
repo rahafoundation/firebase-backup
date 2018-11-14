@@ -52,7 +52,7 @@ async function storeAllQueries(collectionsToBackup: {
  * ======
  */
 async function main() {
-  console.log("Backing up prod Member and Operation collections.");
+  console.log("Backing up prod Member, Operation, and notificationHistory collections.");
   console.log("Arguments: path_to_credentials_file");
 
   const args = process.argv;
