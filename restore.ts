@@ -44,7 +44,8 @@ async function restoreDatabase(pathToFbKey: string): Promise<void> {
 
   const collectionsToRestore = {
     operations: db.collection("operations"),
-    members: db.collection("members")
+    members: db.collection("members"),
+    notificationHistory: db.collection("notificationHistory")
   };
 
   await Promise.all(
