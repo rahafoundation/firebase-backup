@@ -1,3 +1,7 @@
+# DEPRECATED
+
+This repo is inactive and not being monitored for security and functionality updates.
+
 # firebase-backup
 
 A simple backup tool for operations and members in firestore. Currently specific
